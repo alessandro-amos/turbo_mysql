@@ -1,7 +1,7 @@
 name: turbo_mysql
 description: A high-performance MySQL client powered by Rust FFI.
 version: 0.0.1
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/alessandro-amos/turbo_mysql
 
 environment:
   sdk: ^3.10.4
