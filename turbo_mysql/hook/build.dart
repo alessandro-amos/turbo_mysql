@@ -18,11 +18,11 @@ void main(List<String> args) async {
 }
 
 List<CodeAsset>? _getAssets(
-    BuildInput input,
-    OS os,
-    Architecture? arch,
-    String packageName,
-    ) {
+  BuildInput input,
+  OS os,
+  Architecture? arch,
+  String packageName,
+) {
   String? libPath;
 
   if (os == OS.macOS) {

@@ -83,5 +83,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add turbo_mysql/native/
-          git commit -m "build: atualiza bibliotecas nativas e testes aprovados" || echo "sem alteracoes para commitar"
+          git commit -m "build: Update native binaries [skip ci]" || echo "No changes to commit"
           git push origin main

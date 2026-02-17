@@ -1,38 +1,46 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:turbo_mysql/turbo_mysql.dart';
 
 void main() {
+  
+  final host = Platform.environment['DB_HOST'] ?? 'localhost';
+  final user = Platform.environment['DB_USER'] ?? 'root';
+  final dbName = Platform.environment['DB_NAME'] ?? 'test';
+  final pass = Platform.environment['DB_PASS'] ?? 'password';
+  final port = int.tryParse(Platform.environment['DB_PORT'] ?? '3306') ?? 3306;
+  
   group('MySqlConfig Unit Tests', () {
     test('creates basic connection string', () {
-      const config = MySqlConfig(
-        host: 'localhost',
-        user: 'root',
-        pass: 'password',
+      final config = MySqlConfig(
+        host: host,
+        user: user,
+        pass: pass,
       );
 
       final connString = config.toConnectionString();
-      expect(connString, contains('mysql://root:password@localhost:3306'));
+      expect(connString, contains('mysql://$user:$pass@$host:$port'));
       expect(connString, contains('pool_min=1'));
       expect(connString, contains('pool_max=10'));
     });
 
     test('handles empty database name', () {
-      const config = MySqlConfig(
-        host: 'localhost',
-        user: 'root',
-        pass: 'password',
+      final config = MySqlConfig(
+        host: host,
+        user: user,
+        pass: pass,
         dbName: '',
       );
 
       final connString = config.toConnectionString();
-      expect(connString, isNot(contains('localhost:3306?/')));
-      expect(connString, contains('localhost:3306?'));
+      expect(connString, isNot(contains('$host:$port?/')));
+      expect(connString, contains('$host:$port?'));
     });
 
     test('encodes special characters in credentials', () {
-      const config = MySqlConfig(
-        host: 'localhost',
+      final config = MySqlConfig(
+        host: host,
         user: 'user@domain.com',
         pass: 'p@ss!w#rd%',
       );
@@ -102,31 +110,31 @@ void main() {
     });
 
     test('copyWith replaces only specified fields', () {
-      const config1 = MySqlConfig(
-        host: 'localhost',
-        user: 'root',
-        pass: 'password',
-        dbName: 'test',
-        port: 3306,
+      final config1 = MySqlConfig(
+        host: host,
+        user: user,
+        pass: pass,
+        dbName: dbName,
+        port: port,
         poolMax: 10,
       );
 
       final config2 = config1.copyWith(host: 'remote.server.com', poolMax: 50);
 
       expect(config2.host, 'remote.server.com');
-      expect(config2.user, 'root');
-      expect(config2.pass, 'password');
-      expect(config2.dbName, 'test');
+      expect(config2.user, user);
+      expect(config2.pass, pass);
+      expect(config2.dbName, dbName);
       expect(config2.port, 3306);
       expect(config2.poolMax, 50);
       expect(config1.poolMax, 10);
     });
 
     test('copyWith preserves null optional parameters', () {
-      const config1 = MySqlConfig(
-        host: 'localhost',
-        user: 'root',
-        pass: 'password',
+      final config1 = MySqlConfig(
+        host: host,
+        user: user,
+        pass: pass,
       );
 
       final config2 = config1.copyWith(port: 3307);
@@ -138,9 +146,9 @@ void main() {
 
     test('handles multiple init and setup statements', () {
       final config = MySqlConfig(
-        host: 'localhost',
-        user: 'root',
-        pass: 'password',
+        host: host,
+        user: user,
+        pass: pass,
         init: [
           'SET NAMES utf8mb4',
           'SET time_zone = "+00:00"',
@@ -165,10 +173,10 @@ void main() {
     });
 
     test('handles unusual but valid database names', () {
-      const config = MySqlConfig(
-        host: 'localhost',
-        user: 'root',
-        pass: 'password',
+      final config = MySqlConfig(
+        host: host,
+        user: user,
+        pass: pass,
         dbName: 'my-database_2024',
       );
 
@@ -323,10 +331,10 @@ void main() {
       mysql = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
           poolMax: 10,
         ),
       );
@@ -703,7 +711,10 @@ void main() {
 
     test('handles DateTime parameters', () async {
       final now = DateTime.now();
-      final formatted = now.toIso8601String().replaceAll('T', ' ').substring(0, 19);
+      final formatted = now
+          .toIso8601String()
+          .replaceAll('T', ' ')
+          .substring(0, 19);
 
       await mysql.query(
         'INSERT INTO test_users (username, created_at) VALUES (?, ?)',
@@ -755,7 +766,8 @@ void main() {
     });
 
     test('handles special characters in strings', () async {
-      const specialText = 'Test with "quotes", \'apostrophes\', and \backslashes\\';
+      const specialText =
+          'Test with "quotes", \'apostrophes\', and \backslashes\\';
 
       await mysql.query(
         'INSERT INTO test_users (username, email) VALUES (?, ?)',
@@ -788,14 +800,14 @@ void main() {
 
     test('throws MySQLException on syntax error', () async {
       expect(
-        () async => await mysql.queryRaw('SLECT * FROM test_users'),
+            () async => await mysql.queryRaw('SLECT * FROM test_users'),
         throwsA(isA<MySQLException>()),
       );
     });
 
     test('throws MySQLException on non-existent table', () async {
       expect(
-        () async => await mysql.query('SELECT * FROM non_existent_table'),
+            () async => await mysql.query('SELECT * FROM non_existent_table'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -806,7 +818,7 @@ void main() {
       ]);
 
       expect(
-        () async => await mysql.query(
+            () async => await mysql.query(
           'INSERT INTO test_users (username) VALUES (?)',
           ['unique_user'],
         ),
@@ -816,7 +828,7 @@ void main() {
 
     test('throws MySQLException on foreign key violation', () async {
       expect(
-        () async => await mysql.query(
+            () async => await mysql.query(
           'INSERT INTO test_orders (user_id, product_id, quantity) VALUES (?, ?, ?)',
           [
             99999,
@@ -836,10 +848,10 @@ void main() {
       mysql = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 
@@ -944,14 +956,14 @@ void main() {
 
     test('insertBatch throws on empty columns', () async {
       expect(
-        () async => await mysql.insertBatch('test_batch', [], [
+            () async => await mysql.insertBatch('test_batch', [], [
           [100],
         ]),
         throwsA(isA<MySQLException>()),
       );
     });
 
-    test('insertBatchOnDuplicate updates existing row', () async {
+    test('upsertBatch updates existing row', () async {
       await mysql.query(
         'INSERT INTO test_batch (code, value) VALUES (?, ?)',
         ['DUP1', 100],
@@ -976,7 +988,7 @@ void main() {
       expect(result.rows[1][0], 'DUP2');
     });
 
-    test('insertBatchOnDuplicate handles multiple duplicates', () async {
+    test('upsertBatch handles multiple duplicates', () async {
       await mysql.insertBatch(
         'test_batch',
         ['code', 'value'],
@@ -1030,10 +1042,10 @@ void main() {
       mysql = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 
@@ -1222,7 +1234,7 @@ void main() {
 
     test('throws when preparing invalid SQL', () async {
       expect(
-        () async => await mysql.prepare('SELECT * FRM invalid'),
+            () async => await mysql.prepare('SELECT * FRM invalid'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1235,10 +1247,10 @@ void main() {
       mysql = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
           poolMax: 10,
         ),
       );
@@ -1446,7 +1458,7 @@ void main() {
       await tx.commit();
 
       expect(
-        () async => await tx.query('SELECT 1'),
+            () async => await tx.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1456,7 +1468,7 @@ void main() {
       await tx.rollback();
 
       expect(
-        () async => await tx.query('SELECT 1'),
+            () async => await tx.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1475,10 +1487,10 @@ void main() {
       mysql = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
           poolMax: 10,
         ),
       );
@@ -1608,10 +1620,10 @@ void main() {
       mysql = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 
@@ -1733,9 +1745,9 @@ void main() {
       final pool = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
+          user: user,
+          pass: pass,
+          dbName: dbName,
           poolMin: 2,
           poolMax: 5,
         ),
@@ -1751,9 +1763,9 @@ void main() {
       final pool = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
+          user: user,
+          pass: pass,
+          dbName: dbName,
         ),
       );
 
@@ -1776,9 +1788,9 @@ void main() {
       final pool = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
+          user: user,
+          pass: pass,
+          dbName: dbName,
         ),
       );
 
@@ -1786,7 +1798,7 @@ void main() {
       await pool.close();
 
       expect(
-        () async => await pool.query('SELECT 1'),
+            () async => await pool.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1795,8 +1807,8 @@ void main() {
       final pool = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
+          user: user,
+          pass: pass,
           dbName: 'test_ensure_db_${DateTime.now().millisecondsSinceEpoch}',
         ),
       );
@@ -1811,14 +1823,93 @@ void main() {
       final badPool = MySqlPool(
         MySqlConfig(
           host: '127.0.0.1',
-          user: 'root',
+          user: user,
           pass: 'wrong_pass',
-          dbName: 'test',
+          dbName: dbName,
           port: 9999,
         ),
       );
       expect(
-        () async => await badPool.connect(),
+            () async => await badPool.connect(),
+        throwsA(isA<MySQLException>()),
+      );
+    });
+  });
+
+  group('Integration Tests - Dedicated Connections', () {
+    late MySqlPool mysql;
+
+    setUpAll(() async {
+      mysql = MySqlPool(
+        MySqlConfig(
+          host: '127.0.0.1',
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
+        ),
+      );
+
+      await mysql.connect();
+      await mysql.query('DROP TABLE IF EXISTS test_dedicated_conn');
+      await mysql.query('''
+        CREATE TABLE test_dedicated_conn (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          val VARCHAR(50)
+        )
+      ''');
+    });
+
+    tearDownAll(() async {
+      if (mysql.isConnected) {
+        await mysql.query('DROP TABLE IF EXISTS test_dedicated_conn');
+        await mysql.close();
+      }
+    });
+
+    setUp(() async {
+      await mysql.query('DELETE FROM test_dedicated_conn');
+    });
+
+    test('getConnection returns a usable connection', () async {
+      final conn = await mysql.getConnection();
+      expect(conn.isTransaction, isFalse);
+
+      await conn.query('INSERT INTO test_dedicated_conn (val) VALUES (?)', [
+        'test_val',
+      ]);
+      final result = await conn.query('SELECT val FROM test_dedicated_conn');
+
+      expect(result.rows.length, 1);
+      expect(result.rows[0][0], 'test_val');
+
+      await conn.release();
+    });
+
+    test('commit on dedicated connection throws exception', () async {
+      final conn = await mysql.getConnection();
+      expect(conn.isTransaction, isFalse);
+
+      expect(() async => await conn.commit(), throwsA(isA<MySQLException>()));
+
+      await conn.release();
+    });
+
+    test('rollback on dedicated connection throws exception', () async {
+      final conn = await mysql.getConnection();
+      expect(conn.isTransaction, isFalse);
+
+      expect(() async => await conn.rollback(), throwsA(isA<MySQLException>()));
+
+      await conn.release();
+    });
+
+    test('throws error after connection is released', () async {
+      final conn = await mysql.getConnection();
+      await conn.release();
+
+      expect(
+            () async => await conn.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });

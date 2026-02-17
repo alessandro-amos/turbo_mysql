@@ -162,13 +162,21 @@ class PreparedStatement {
   }
 }
 
-/// A dedicated connection to the database, generally used for transactions.
+/// A dedicated connection to the database.
 class MySqlConnection {
   final Pointer<Void> _connPtr;
   final NativeCallable<QueryCallbackNative> _callback;
+
+  /// Indicates if this connection was started as part of a transaction.
+  final bool isTransaction;
+
   bool _isClosed = false;
 
-  MySqlConnection._(this._connPtr, this._callback);
+  MySqlConnection._(
+    this._connPtr,
+    this._callback, {
+    this.isTransaction = false,
+  });
 
   /// Executes a raw SQL query using the MySQL Text Protocol.
   Future<QueryResult> queryRaw(String sql) async {
@@ -222,6 +230,7 @@ class MySqlConnection {
   /// Commits the active transaction on this connection and releases it.
   Future<void> commit() async {
     if (_isClosed) throw MySQLException('Connection is closed');
+    if (!isTransaction) throw MySQLException('Not a transaction connection');
 
     final queryId = _nextQueryId++;
     final completer = Completer<QueryResult>();
@@ -238,6 +247,7 @@ class MySqlConnection {
   /// Rolls back the active transaction on this connection and releases it.
   Future<void> rollback() async {
     if (_isClosed) throw MySQLException('Connection is closed');
+    if (!isTransaction) throw MySQLException('Not a transaction connection');
 
     final queryId = _nextQueryId++;
     final completer = Completer<QueryResult>();
@@ -311,7 +321,10 @@ class MySqlConnection {
             writer.writeInt64(param ? 1 : 0);
           } else if (param is DateTime) {
             writer.writeUint8(4);
-            final str = param.toIso8601String().replaceAll('T', ' ').substring(0, 19);
+            final str = param
+                .toIso8601String()
+                .replaceAll('T', ' ')
+                .substring(0, 19);
             writer.writeString(str);
           } else if (param is String) {
             writer.writeUint8(3);
@@ -359,7 +372,7 @@ class MySqlConnection {
     });
   }
 
-  /// Releases this connection back to the pool without committing or rolling back.
+  /// Releases this connection back to the pool.
   Future<void> release() async {
     if (_isClosed) return;
     mysql_conn_destroy(_connPtr);
@@ -520,7 +533,26 @@ class MySqlPool {
     return completer.future.then((res) {
       final ptrAddr = res.affectedRows;
       final ptr = Pointer<Void>.fromAddress(ptrAddr);
-      return MySqlConnection._(ptr, _callback!);
+      return MySqlConnection._(ptr, _callback!, isTransaction: true);
+    });
+  }
+
+  /// Gets a dedicated connection from the pool without starting a transaction.
+  Future<MySqlConnection> getConnection() async {
+    if (!_isInitialized || _poolPtr == null || _poolPtr == nullptr) {
+      throw MySQLException('Not connected. Call connect() first.');
+    }
+
+    final queryId = _nextQueryId++;
+    final completer = Completer<QueryResult>();
+    _pendingQueries[queryId] = completer;
+
+    mysql_pool_get_connection(_poolPtr!, queryId, _callback!.nativeFunction);
+
+    return completer.future.then((res) {
+      final ptrAddr = res.affectedRows;
+      final ptr = Pointer<Void>.fromAddress(ptrAddr);
+      return MySqlConnection._(ptr, _callback!, isTransaction: false);
     });
   }
 
@@ -585,7 +617,10 @@ class MySqlPool {
             writer.writeInt64(param ? 1 : 0);
           } else if (param is DateTime) {
             writer.writeUint8(4);
-            final str = param.toIso8601String().replaceAll('T', ' ').substring(0, 19);
+            final str = param
+                .toIso8601String()
+                .replaceAll('T', ' ')
+                .substring(0, 19);
             writer.writeString(str);
           } else if (param is String) {
             writer.writeUint8(3);
@@ -656,5 +691,6 @@ class MySqlPool {
   }
 
   /// Returns `true` if the pool is initialized and connected.
-  bool get isConnected => _isInitialized && _poolPtr != null && _poolPtr != nullptr;
+  bool get isConnected =>
+      _isInitialized && _poolPtr != null && _poolPtr != nullptr;
 }

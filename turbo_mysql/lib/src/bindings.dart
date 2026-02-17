@@ -2,7 +2,8 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
 /// Callback function signature for receiving query results from Rust.
-typedef QueryCallbackNative = Void Function(Int64 id, Pointer<Uint8> data, Int32 len);
+typedef QueryCallbackNative =
+    Void Function(Int64 id, Pointer<Uint8> data, Int32 len);
 
 /// Creates a new MySQL connection pool in the Rust layer.
 @Native<Pointer<Void> Function(Pointer<Utf8>)>(
@@ -132,7 +133,23 @@ external void mysql_pool_begin_transaction(
   Pointer<NativeFunction<QueryCallbackNative>> callback,
 );
 
-/// Executes a raw text query on a specific connection (transaction).
+/// Gets a dedicated connection from the pool without starting a transaction.
+@Native<
+  Void Function(
+    Pointer<Void>,
+    Int64,
+    Pointer<NativeFunction<QueryCallbackNative>>,
+  )
+>(
+  assetId: 'package:turbo_mysql/turbo_mysql_core',
+)
+external void mysql_pool_get_connection(
+  Pointer<Void> pool,
+  int id,
+  Pointer<NativeFunction<QueryCallbackNative>> callback,
+);
+
+/// Executes a raw text query on a specific connection.
 @Native<
   Void Function(
     Pointer<Void>,
@@ -150,7 +167,7 @@ external void mysql_conn_query_raw(
   Pointer<NativeFunction<QueryCallbackNative>> callback,
 );
 
-/// Executes a query with parameters on a specific connection (transaction).
+/// Executes a query with parameters on a specific connection.
 @Native<
   Void Function(
     Pointer<Void>,

@@ -1,19 +1,27 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:turbo_mysql/turbo_mysql.dart';
 
 void main() {
+
+  final host = Platform.environment['DB_HOST'] ?? 'localhost';
+  final user = Platform.environment['DB_USER'] ?? 'root';
+  final dbName = Platform.environment['DB_NAME'] ?? 'test';
+  final pass = Platform.environment['DB_PASS'] ?? 'password';
+  final port = int.tryParse(Platform.environment['DB_PORT'] ?? '3306') ?? 3306;
+  
   group('Advanced Data Type Tests', () {
     late MySqlPool mysql;
 
     setUpAll(() async {
       mysql = MySqlPool(
         MySqlConfig(
-          host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          host: host,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 
@@ -323,11 +331,11 @@ void main() {
     setUpAll(() async {
       mysql = MySqlPool(
         MySqlConfig(
-          host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          host: host,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 
@@ -626,11 +634,11 @@ void main() {
     setUpAll(() async {
       mysql = MySqlPool(
         MySqlConfig(
-          host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          host: host,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
           poolMax: 10,
         ),
       );
@@ -747,11 +755,11 @@ void main() {
     setUpAll(() async {
       mysql = MySqlPool(
         MySqlConfig(
-          host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          host: host,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 
@@ -914,11 +922,11 @@ void main() {
     setUpAll(() async {
       mysql = MySqlPool(
         MySqlConfig(
-          host: '127.0.0.1',
-          user: 'root',
-          pass: 'password',
-          dbName: 'test',
-          port: 3306,
+          host: host,
+          user: user,
+          pass: pass,
+          dbName: dbName,
+          port: port,
         ),
       );
 

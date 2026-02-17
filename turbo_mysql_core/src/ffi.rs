@@ -248,6 +248,35 @@ pub extern "C" fn mysql_pool_begin_transaction(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn mysql_pool_get_connection(
+    pool_ptr: *mut MysqlPool,
+    req_id: c_longlong,
+    callback: CallbackType,
+) {
+    let cb = CallbackWrapper(callback);
+    if pool_ptr.is_null() {
+        send_error(&cb, req_id, "Invalid pointers");
+        return;
+    }
+    let pool = unsafe { &*pool_ptr }.pool.clone();
+    get_runtime().spawn(async move {
+        let conn = unwrap_or_return!(pool.get_conn().await, cb, req_id);
+
+        let ptr = Box::into_raw(Box::new(MysqlConnection {
+            conn: Arc::new(Mutex::new(Some(conn))),
+        }));
+
+        let mut buf = Vec::new();
+        buf.write_u8(1);
+        buf.write_u64(ptr as u64);
+        buf.write_u64(0);
+        buf.write_u32(0);
+        buf.write_u32(0);
+        send_response(&cb, req_id, buf);
+    });
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn mysql_conn_query_raw(
     conn_ptr: *mut MysqlConnection,
     query: *const c_char,
