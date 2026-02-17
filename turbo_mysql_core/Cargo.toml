@@ -1,0 +1,20 @@
+[package]
+name = "turbo_mysql_core"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+mysql_async = "0.36.1"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
+mimalloc = { version = "0.1", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+overflow-checks = false
+strip = true
