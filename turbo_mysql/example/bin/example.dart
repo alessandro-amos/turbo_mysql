@@ -5,7 +5,7 @@ void main(List<String> arguments) async {
     MySqlConfig(
       host: 'localhost',
       user: 'root',
-      pass: '123123123',
+      pass: 'password',
       port: 3306,
       dbName: 'test',
       poolMax: 10,
