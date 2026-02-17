@@ -7,7 +7,7 @@ void main(List<String> arguments) async {
       user: 'root',
       pass: '123123123',
       port: 3306,
-      dbName: 'R3_B0046',
+      dbName: 'test',
       poolMax: 10,
     ),
   );
