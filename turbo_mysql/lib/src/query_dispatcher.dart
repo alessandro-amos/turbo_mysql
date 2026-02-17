@@ -77,9 +77,9 @@ void handleQueryCallback(int id, Pointer<Uint8> dataPtr, int len) {
 
       completer.complete(result);
     }
-  } catch (e) {
+  } catch (e, st) {
     completer.completeError(
-      MySQLException('Failed to parse binary result: $e'),
+      MySQLException('Failed to parse binary result: $e $st'),
     );
   } finally {
     mysql_buffer_free(dataPtr, len);
