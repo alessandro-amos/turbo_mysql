@@ -48,6 +48,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
       - name: Clean existing binaries
+        shell: bash
         run: rm -rf turbo_mysql/native/*
       - uses: actions/download-artifact@v4
         with:
@@ -71,6 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Clean existing binaries
+        shell: bash
         run: rm -rf turbo_mysql/native/*
       - uses: actions/download-artifact@v4
         with:
