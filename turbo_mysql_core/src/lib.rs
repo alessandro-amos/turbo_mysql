@@ -22,7 +22,7 @@ pub fn get_runtime() -> &'static Runtime {
 
 /// Frees a memory buffer allocated by the Rust FFI layer.
 #[unsafe(no_mangle)]
-pub extern "C" fn mysql_free_buffer(ptr: *mut c_uchar, len: c_int) {
+pub extern "C" fn mysql_buffer_free(ptr: *mut c_uchar, len: c_int) {
     if !ptr.is_null() && len > 0 {
         unsafe {
             let vec = Vec::from_raw_parts(ptr, len as usize, len as usize);
