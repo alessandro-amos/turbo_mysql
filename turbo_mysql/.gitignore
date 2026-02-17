@@ -1,8 +1,4 @@
 .dart_tool/
 .idea/
 
-native/**/*.dylib
-native/**/*.so
-native/**/*.dll
-
 pubspec.lock
