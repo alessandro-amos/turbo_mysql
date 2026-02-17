@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:turbo_mysql/turbo_mysql.dart';
 
 void main() {
-  final host = Platform.environment['DB_HOST'] ?? 'localhost';
+  final host = Platform.environment['DB_HOST'] ?? '127.0.0.1';
   final user = Platform.environment['DB_USER'] ?? 'root';
   final dbName = Platform.environment['DB_NAME'] ?? 'test';
   final pass = Platform.environment['DB_PASS'] ?? 'password';
