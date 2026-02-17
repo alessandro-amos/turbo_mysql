@@ -7,8 +7,8 @@ on:
       - 'turbo_mysql_core/**'
       - '.github/workflows/**'
       - 'tool/build.sh'
-      - 'lib/**'
-      - 'test/**'
+      - 'turbo_mysql/lib/**'
+      - 'turbo_mysql/test/**'
   pull_request:
     branches:
       - main
@@ -59,7 +59,9 @@ jobs:
           MYSQL_PWD: password
       - uses: dart-lang/setup-dart@v1
       - run: dart pub get
+        working-directory: turbo_mysql
       - run: dart test
+        working-directory: turbo_mysql
 
   commit:
     needs: test
