@@ -4,13 +4,12 @@ import 'package:test/test.dart';
 import 'package:turbo_mysql/turbo_mysql.dart';
 
 void main() {
-
   final host = Platform.environment['DB_HOST'] ?? 'localhost';
   final user = Platform.environment['DB_USER'] ?? 'root';
   final dbName = Platform.environment['DB_NAME'] ?? 'test';
   final pass = Platform.environment['DB_PASS'] ?? 'password';
   final port = int.tryParse(Platform.environment['DB_PORT'] ?? '3306') ?? 3306;
-  
+
   group('Advanced Data Type Tests', () {
     late MySqlPool mysql;
 
@@ -88,9 +87,9 @@ void main() {
       final result = await mysql.queryRaw(
         'SELECT tiny_int FROM test_datatypes ORDER BY tiny_int',
       );
-      expect(int.parse(result.rows[0][0].toString()), -128);
-      expect(int.parse(result.rows[1][0].toString()), 0);
-      expect(int.parse(result.rows[2][0].toString()), 127);
+      expect(result.rows[0][0], -128);
+      expect(result.rows[1][0], 0);
+      expect(result.rows[2][0], 127);
     });
 
     test('BIGINT large values', () async {
@@ -107,8 +106,8 @@ void main() {
       final result = await mysql.queryRaw(
         'SELECT big_int FROM test_datatypes ORDER BY big_int',
       );
-      expect(int.parse(result.rows[0][0].toString()), largeNegative);
-      expect(int.parse(result.rows[1][0].toString()), largePositive);
+      expect(result.rows[0][0], largeNegative);
+      expect(result.rows[1][0], largePositive);
     });
 
     test('FLOAT precision', () async {
@@ -117,7 +116,7 @@ void main() {
       ]);
 
       final result = await mysql.query('SELECT float_val FROM test_datatypes');
-      expect(double.parse(result.rows[0][0].toString()), closeTo(123.45, 0.01));
+      expect(result.rows[0][0], closeTo(123.45, 0.01));
     });
 
     test('DOUBLE precision', () async {
@@ -128,7 +127,7 @@ void main() {
 
       final result = await mysql.query('SELECT double_val FROM test_datatypes');
       expect(
-        double.parse(result.rows[0][0].toString()),
+        result.rows[0][0],
         closeTo(123456.7891, 0.0001),
       );
     });
@@ -143,7 +142,7 @@ void main() {
         'SELECT decimal_val FROM test_datatypes',
       );
       expect(
-        double.parse(result.rows[0][0].toString()),
+        result.rows[0][0],
         closeTo(99999.12345, 0.00001),
       );
     });
@@ -209,7 +208,7 @@ void main() {
         'SELECT varchar_val, LENGTH(varchar_val) FROM test_datatypes',
       );
       expect(result.rows[0][0], 'variable');
-      expect(int.parse(result.rows[0][1].toString()), 8);
+      expect(result.rows[0][1], 8);
     });
 
     test('TEXT large content', () async {
@@ -317,11 +316,11 @@ void main() {
         'SELECT tiny_int, int_val, float_val, double_val, decimal_val FROM test_datatypes',
       );
       final row = result.rows[0];
-      expect(int.parse(row[0].toString()), 0);
-      expect(int.parse(row[1].toString()), 0);
-      expect(double.parse(row[2].toString()), 0.0);
-      expect(double.parse(row[3].toString()), 0.0);
-      expect(double.parse(row[4].toString()), 0.0);
+      expect(row[0], 0);
+      expect(row[1], 0);
+      expect(row[2], 0.0);
+      expect(row[3], 0.0);
+      expect(row[4], 0.0);
     });
   });
 
@@ -400,8 +399,8 @@ void main() {
       );
 
       final depts = await mysql.query('SELECT id FROM departments ORDER BY id');
-      final engId = int.parse(depts.rows[0][0].toString());
-      final salesId = int.parse(depts.rows[1][0].toString());
+      final engId = depts.rows[0][0];
+      final salesId = depts.rows[1][0];
 
       await mysql.insertBatch(
         'employees',
@@ -424,7 +423,7 @@ void main() {
 
       expect(result.rows.length, 2);
       expect(result.rows[0][0], 'Engineering');
-      expect(int.parse(result.rows[0][1].toString()), 2);
+      expect(result.rows[0][1], 2);
     });
 
     test('complex JOIN with aggregation', () async {
@@ -451,8 +450,8 @@ void main() {
       final employees = await mysql.queryRaw(
         'SELECT id FROM employees ORDER BY id',
       );
-      final aliceId = int.parse(employees.rows[0][0].toString());
-      final bobId = int.parse(employees.rows[1][0].toString());
+      final aliceId = employees.rows[0][0];
+      final bobId = employees.rows[1][0];
 
       await mysql.insertBatch(
         'salaries',
@@ -479,7 +478,7 @@ void main() {
 
       expect(result.rows.length, 2);
       expect(result.rows[0][0], 'Alice');
-      expect(double.parse(result.rows[0][2].toString()), closeTo(72500, 0.1));
+      expect(result.rows[0][2], closeTo(72500, 0.1));
     });
 
     test('CASE statement in SELECT', () async {
@@ -622,9 +621,9 @@ void main() {
       ''');
 
       expect(result.rows.length, 3);
-      expect(int.parse(result.rows[0][0].toString()), 1);
-      expect(int.parse(result.rows[1][0].toString()), 2);
-      expect(int.parse(result.rows[2][0].toString()), 3);
+      expect(result.rows[0][0], 1);
+      expect(result.rows[1][0], 2);
+      expect(result.rows[2][0], 3);
     });
   });
 
@@ -675,7 +674,7 @@ void main() {
       }
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_stress');
-      expect(int.parse(result.rows[0][0].toString()), 100);
+      expect(result.rows[0][0], 100);
     });
 
     test('batch insert performance comparison', () async {
@@ -684,7 +683,7 @@ void main() {
       await mysql.insertBatch('test_stress', ['data', 'value'], rows);
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_stress');
-      expect(int.parse(result.rows[0][0].toString()), 1000);
+      expect(result.rows[0][0], 1000);
     });
 
     test('select with index usage', () async {
@@ -715,7 +714,7 @@ void main() {
       await stmt.release();
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_stress');
-      expect(int.parse(result.rows[0][0].toString()), 100);
+      expect(result.rows[0][0], 100);
     });
 
     test('concurrent query execution', () async {
@@ -745,7 +744,7 @@ void main() {
       await tx.commit();
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_stress');
-      expect(int.parse(result.rows[0][0].toString()), 50);
+      expect(result.rows[0][0], 50);
     });
   });
 
@@ -828,7 +827,7 @@ void main() {
       );
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_recovery');
-      expect(int.parse(result.rows[0][0].toString()), 1);
+      expect(result.rows[0][0], 1);
     });
 
     test('handles malformed SQL syntax', () async {
@@ -850,7 +849,7 @@ void main() {
       );
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_recovery');
-      expect(int.parse(result.rows[0][0].toString()), 1);
+      expect(result.rows[0][0], 1);
     });
 
     test('transaction rollback after error maintains pool', () async {
@@ -869,7 +868,7 @@ void main() {
       }
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_recovery');
-      expect(int.parse(result.rows[0][0].toString()), 0);
+      expect(result.rows[0][0], 0);
     });
 
     test('multiple errors in sequence', () async {
@@ -904,7 +903,7 @@ void main() {
       await stmt.release();
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_recovery');
-      expect(int.parse(result.rows[0][0].toString()), 2);
+      expect(result.rows[0][0], 2);
     });
 
     test('handles very long query timeout gracefully', () async {

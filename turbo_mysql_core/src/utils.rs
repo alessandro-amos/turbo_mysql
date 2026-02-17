@@ -4,6 +4,15 @@ use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_longlong, c_uchar};
 use std::slice;
 
+const STATUS_ERROR: u8 = 0;
+const STATUS_OK: u8 = 1;
+
+const PARAM_NULL: u8 = 0;
+const PARAM_INT: u8 = 1;
+const PARAM_FLOAT: u8 = 2;
+const PARAM_STRING: u8 = 3;
+const PARAM_BLOB: u8 = 4;
+
 macro_rules! unwrap_or_return {
     ($expr:expr, $cb:expr, $id:expr) => {
         match $expr {
@@ -27,6 +36,7 @@ macro_rules! unwrap_or_return {
 
 pub trait BinaryWrite {
     fn write_u8(&mut self, v: u8);
+    fn write_u16(&mut self, v: u16);
     fn write_u32(&mut self, v: u32);
     fn write_u64(&mut self, v: u64);
     fn write_i64(&mut self, v: i64);
@@ -37,6 +47,9 @@ pub trait BinaryWrite {
 impl BinaryWrite for Vec<u8> {
     fn write_u8(&mut self, v: u8) {
         self.push(v);
+    }
+    fn write_u16(&mut self, v: u16) {
+        self.extend_from_slice(&v.to_le_bytes());
     }
     fn write_u32(&mut self, v: u32) {
         self.extend_from_slice(&v.to_le_bytes());
@@ -122,31 +135,29 @@ pub fn send_response(cb: &CallbackWrapper, req_id: c_longlong, data: Vec<u8>) {
 }
 
 pub fn send_error(cb: &CallbackWrapper, req_id: c_longlong, msg: &str) {
-    let mut buf = Vec::new();
-    buf.write_u8(0);
-    buf.write_blob(msg.as_bytes());
-    send_response(cb, req_id, buf);
+    send_response(cb, req_id, encode_error(msg));
 }
 
 pub fn encode_error(msg: &str) -> Vec<u8> {
     let mut buf = Vec::new();
-    buf.write_u8(0);
+    buf.write_u8(STATUS_ERROR);
     buf.write_blob(msg.as_bytes());
     buf
 }
 
+/// Parses a single parameter value from the binary stream sent by Dart.
 pub fn parse_value(reader: &mut BinaryReader) -> MySqlValue {
     match reader.read_u8() {
-        Some(0) => MySqlValue::NULL,
-        Some(1) => reader
+        Some(PARAM_NULL) => MySqlValue::NULL,
+        Some(PARAM_INT) => reader
             .read_i64()
             .map(MySqlValue::Int)
             .unwrap_or(MySqlValue::NULL),
-        Some(2) => reader
+        Some(PARAM_FLOAT) => reader
             .read_f64()
             .map(MySqlValue::Double)
             .unwrap_or(MySqlValue::NULL),
-        Some(3) | Some(4) => reader
+        Some(PARAM_STRING) | Some(PARAM_BLOB) => reader
             .read_blob()
             .map(MySqlValue::Bytes)
             .unwrap_or(MySqlValue::NULL),
@@ -168,9 +179,10 @@ pub fn parse_params_list(ptr: *const c_uchar, len: c_int) -> Vec<MySqlValue> {
     mysql_params
 }
 
+/// Serializes query results into a binary payload for consumption by Dart.
 pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64) -> Vec<u8> {
     let mut buf = Vec::with_capacity(20 + rows.len() * 64);
-    buf.write_u8(1);
+    buf.write_u8(STATUS_OK);
     buf.write_u64(affected_rows);
     buf.write_u64(last_insert_id);
 
@@ -186,63 +198,57 @@ pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64)
             .map(|c| {
                 (
                     c.name_str().as_bytes().to_vec(),
-                    c.character_set(),
                     c.column_type() as u16,
+                    c.character_set(),
                 )
             })
             .collect()
     };
 
     buf.write_u32(cols_meta.len() as u32);
-    for (name, _, _) in &cols_meta {
+    for (name, col_type, charset) in &cols_meta {
         buf.write_blob(name);
+        buf.write_u16(*col_type);
+        buf.write_u16(*charset);
     }
 
     buf.write_u32(rows.len() as u32);
-
     for row in rows {
         for i in 0..row.len() {
             match &row[i] {
                 MySqlValue::NULL => buf.write_u8(0),
                 MySqlValue::Int(v) => {
                     buf.write_u8(1);
-                    buf.write_i64(*v);
+                    buf.write_blob(&v.to_le_bytes());
                 }
                 MySqlValue::UInt(v) => {
                     buf.write_u8(1);
-                    buf.write_i64(*v as i64);
+                    buf.write_blob(&v.to_le_bytes());
                 }
                 MySqlValue::Float(v) => {
-                    buf.write_u8(2);
-                    buf.write_f64(*v as f64);
+                    buf.write_u8(1);
+                    buf.write_blob(&(*v as f64).to_le_bytes());
                 }
                 MySqlValue::Double(v) => {
-                    buf.write_u8(2);
-                    buf.write_f64(*v);
+                    buf.write_u8(1);
+                    buf.write_blob(&v.to_le_bytes());
                 }
                 MySqlValue::Bytes(b) => {
-                    let c_type = cols_meta[i].2;
-                    let is_blob = c_type >= 249 && c_type <= 252 || c_type == 255 || c_type == 16;
-                    let is_bin_str = c_type == 253 || c_type == 254;
-                    if cols_meta[i].1 == 63 && (is_blob || is_bin_str) {
-                        buf.write_u8(4);
-                    } else {
-                        buf.write_u8(3);
-                    }
+                    buf.write_u8(1);
                     buf.write_blob(b);
                 }
-                MySqlValue::Date(y, m, d, h, min, s, mic) => {
+                MySqlValue::Date(y, mo, d, h, min, s, mic) => {
                     let ds = format!(
                         "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:06}",
-                        y, m, d, h, min, s, mic
+                        y, mo, d, h, min, s, mic
                     );
-                    buf.write_u8(3);
+                    buf.write_u8(1);
                     buf.write_blob(ds.as_bytes());
                 }
                 MySqlValue::Time(neg, d, h, m, s, mic) => {
                     let sign = if *neg { "-" } else { "" };
                     let ts = format!("{}{:02}:{:02}:{:02}:{:02}.{:06}", sign, d, h, m, s, mic);
-                    buf.write_u8(3);
+                    buf.write_u8(1);
                     buf.write_blob(ts.as_bytes());
                 }
             }

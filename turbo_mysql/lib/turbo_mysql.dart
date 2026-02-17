@@ -47,4 +47,5 @@ library;
 export 'src/mysql_exception.dart';
 export 'src/query_result.dart';
 export 'src/mysql_config.dart';
-export 'src/mysql_client.dart';
+export 'src/pool.dart';
+export 'src/mysql_connection.dart';

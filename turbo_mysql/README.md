@@ -65,10 +65,8 @@ await pool.connect();
 ### Simple and Parameterized Queries
 
 ```dart
-final rawResult = await pool.queryRaw('SELECT id, name FROM users LIMIT 10');
-final maps = rawResult.asMaps;
-
-final paramResult = await pool.query(
+await pool.queryRaw('SELECT id, name FROM users LIMIT 10');
+await pool.query(
   'SELECT * FROM users WHERE age > ? AND is_active = ?',
   [18, true],
 );

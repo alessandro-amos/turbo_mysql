@@ -4,47 +4,54 @@ import 'dart:typed_data';
 
 /// A helper class to read binary data from a memory pointer.
 ///
-/// This class provides methods to read various primitive types and strings
-/// from a [Pointer<Uint8>] typically received from FFI calls.
+/// Provides methods to read primitive types and length-prefixed blobs from
+/// a [Pointer<Uint8>] typically received from FFI callbacks.
 class BinaryReader {
   final ByteData _view;
   int _offset = 0;
   final Uint8List _rawBytes;
 
-  /// Creates a [BinaryReader] from a pointer and a length.
+  /// Creates a [BinaryReader] from a native pointer and a byte length.
   BinaryReader(Pointer<Uint8> ptr, int len)
     : _rawBytes = ptr.asTypedList(len),
       _view = ByteData.sublistView(ptr.asTypedList(len));
 
-  /// Reads an 8-bit unsigned integer and advances the offset.
+  /// Reads an 8-bit unsigned integer and advances the offset by 1.
   int readUint8() {
     final v = _view.getUint8(_offset);
     _offset += 1;
     return v;
   }
 
-  /// Reads a 32-bit unsigned integer (little-endian) and advances the offset.
+  /// Reads a 16-bit unsigned integer (little-endian) and advances the offset by 2.
+  int readUint16() {
+    final v = _view.getUint16(_offset, Endian.little);
+    _offset += 2;
+    return v;
+  }
+
+  /// Reads a 32-bit unsigned integer (little-endian) and advances the offset by 4.
   int readUint32() {
     final v = _view.getUint32(_offset, Endian.little);
     _offset += 4;
     return v;
   }
 
-  /// Reads a 64-bit unsigned integer (little-endian) and advances the offset.
+  /// Reads a 64-bit unsigned integer (little-endian) and advances the offset by 8.
   int readUint64() {
     final v = _view.getUint64(_offset, Endian.little);
     _offset += 8;
     return v;
   }
 
-  /// Reads a 64-bit signed integer (little-endian) and advances the offset.
+  /// Reads a 64-bit signed integer (little-endian) and advances the offset by 8.
   int readInt64() {
     final v = _view.getInt64(_offset, Endian.little);
     _offset += 8;
     return v;
   }
 
-  /// Reads a 64-bit floating-point number (little-endian) and advances the offset.
+  /// Reads a 64-bit floating-point number (little-endian) and advances the offset by 8.
   double readFloat64() {
     final v = _view.getFloat64(_offset, Endian.little);
     _offset += 8;
@@ -61,22 +68,21 @@ class BinaryReader {
   }
 
   /// Reads a length-prefixed UTF-8 string.
-  ///
-  /// It first reads a Uint32 indicating the length of the string bytes,
-  /// then decodes the bytes as UTF-8.
   String readString() {
     final len = readUint32();
     if (len == 0) return '';
-    final str = utf8.decode(_rawBytes.sublist(_offset, _offset + len));
+    final str = utf8.decode(
+      _rawBytes.sublist(_offset, _offset + len),
+      allowMalformed: true,
+    );
     _offset += len;
     return str;
   }
 }
 
-/// A helper class to write binary data to a buffer.
+/// A helper class to write binary data into a growing buffer.
 ///
-/// This class uses [BytesBuilder] to construct a binary payload to be sent
-/// via FFI.
+/// Uses [BytesBuilder] to construct binary payloads to be sent via FFI.
 class BinaryWriter {
   final BytesBuilder _builder = BytesBuilder();
 
@@ -103,17 +109,17 @@ class BinaryWriter {
     _builder.add(b.buffer.asUint8List());
   }
 
-  /// Writes a raw byte array prefixed with its length as a Uint32.
+  /// Writes a raw byte array prefixed with its length as a [Uint32].
   void writeBlob(List<int> bytes) {
     writeUint32(bytes.length);
     _builder.add(bytes);
   }
 
-  /// Writes a UTF-8 string prefixed with its byte length.
+  /// Writes a UTF-8 string prefixed with its byte length as a [Uint32].
   void writeString(String s) {
     writeBlob(utf8.encode(s));
   }
 
-  /// Returns the collected bytes as a [Uint8List].
+  /// Returns the accumulated bytes as a [Uint8List].
   Uint8List toBytes() => _builder.toBytes();
 }

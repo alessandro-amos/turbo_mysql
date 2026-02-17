@@ -4,13 +4,12 @@ import 'package:test/test.dart';
 import 'package:turbo_mysql/turbo_mysql.dart';
 
 void main() {
-  
   final host = Platform.environment['DB_HOST'] ?? 'localhost';
   final user = Platform.environment['DB_USER'] ?? 'root';
   final dbName = Platform.environment['DB_NAME'] ?? 'test';
   final pass = Platform.environment['DB_PASS'] ?? 'password';
   final port = int.tryParse(Platform.environment['DB_PORT'] ?? '3306') ?? 3306;
-  
+
   group('MySqlConfig Unit Tests', () {
     test('creates basic connection string', () {
       final config = MySqlConfig(
@@ -482,7 +481,7 @@ void main() {
       expect(deleteResult.affectedRows, 2);
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_users');
-      expect(int.parse(result.rows[0][0].toString()), 1);
+      expect(result.rows[0][0], 1);
     });
 
     test('SELECT with multiple WHERE conditions', () async {
@@ -577,11 +576,11 @@ void main() {
       ''');
 
       final row = result.rows[0];
-      expect(int.parse(row[0].toString()), 3);
-      expect(int.parse(row[1].toString()), 25);
-      expect(int.parse(row[2].toString()), 35);
-      expect(double.parse(row[3].toString()).round(), 30);
-      expect(double.parse(row[4].toString()), closeTo(526.50, 0.01));
+      expect(row[0], 3);
+      expect(row[1], 25);
+      expect(row[2], 35);
+      expect(row[3].round(), 30);
+      expect(row[4], closeTo(526.50, 0.01));
     });
 
     test('SELECT with JOIN operations', () async {
@@ -676,7 +675,7 @@ void main() {
         'SELECT balance FROM test_users WHERE username = "decimal_user"',
       );
 
-      final balance = double.parse(result.rows[0][0].toString());
+      final balance = result.rows[0][0];
       expect(balance, closeTo(12345.67, 0.01));
     });
 
@@ -710,15 +709,11 @@ void main() {
     });
 
     test('handles DateTime parameters', () async {
-      final now = DateTime.now();
-      final formatted = now
-          .toIso8601String()
-          .replaceAll('T', ' ')
-          .substring(0, 19);
+      final now = DateTime.now().copyWith(millisecond: 0, microsecond: 0);
 
       await mysql.query(
         'INSERT INTO test_users (username, created_at) VALUES (?, ?)',
-        ['datetime_user', now],
+        ['datetime_user', DateTime.now()],
       );
 
       final result = await mysql.query(
@@ -727,9 +722,11 @@ void main() {
       );
 
       expect(
-        result.rows[0][0].toString(),
-        contains(formatted.substring(0, 10)),
+        result.rows[0][0],
+        isA<DateTime>(),
       );
+
+      expect(result.rows[0][0], equals(now));
     });
 
     test('handles BLOB data correctly', () async {
@@ -758,10 +755,10 @@ void main() {
       );
 
       final row = result.rows[0];
-      expect(int.parse(row[0].toString()), 42);
-      expect(double.parse(row[1].toString()), closeTo(3.14159, 0.00001));
+      expect(row[0], 42);
+      expect(row[1], closeTo(3.14159, 0.00001));
       expect(row[2], 'Hello World');
-      expect(int.parse(row[3].toString()), 1);
+      expect(row[3], 1);
       expect(row[4], isNull);
     });
 
@@ -800,14 +797,14 @@ void main() {
 
     test('throws MySQLException on syntax error', () async {
       expect(
-            () async => await mysql.queryRaw('SLECT * FROM test_users'),
+        () async => await mysql.queryRaw('SLECT * FROM test_users'),
         throwsA(isA<MySQLException>()),
       );
     });
 
     test('throws MySQLException on non-existent table', () async {
       expect(
-            () async => await mysql.query('SELECT * FROM non_existent_table'),
+        () async => await mysql.query('SELECT * FROM non_existent_table'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -818,7 +815,7 @@ void main() {
       ]);
 
       expect(
-            () async => await mysql.query(
+        () async => await mysql.query(
           'INSERT INTO test_users (username) VALUES (?)',
           ['unique_user'],
         ),
@@ -828,7 +825,7 @@ void main() {
 
     test('throws MySQLException on foreign key violation', () async {
       expect(
-            () async => await mysql.query(
+        () async => await mysql.query(
           'INSERT INTO test_orders (user_id, product_id, quantity) VALUES (?, ?, ?)',
           [
             99999,
@@ -918,7 +915,7 @@ void main() {
       expect(count, 5);
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_batch');
-      expect(int.parse(result.rows[0][0].toString()), 5);
+      expect(result.rows[0][0], 5);
     });
 
     test('insertBatch with mixed data types', () async {
@@ -956,7 +953,7 @@ void main() {
 
     test('insertBatch throws on empty columns', () async {
       expect(
-            () async => await mysql.insertBatch('test_batch', [], [
+        () async => await mysql.insertBatch('test_batch', [], [
           [100],
         ]),
         throwsA(isA<MySQLException>()),
@@ -1031,7 +1028,7 @@ void main() {
       expect(count, 1000);
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_batch');
-      expect(int.parse(result.rows[0][0].toString()), 1000);
+      expect(result.rows[0][0], 1000);
     });
   });
 
@@ -1100,7 +1097,7 @@ void main() {
       await stmt.release();
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_prepared');
-      expect(int.parse(result.rows[0][0].toString()), 4);
+      expect(result.rows[0][0], 4);
     });
 
     test('prepare SELECT statement', () async {
@@ -1202,12 +1199,12 @@ void main() {
       await stmt1.execute(['b', 20]);
 
       final count1 = await stmt2.execute([5]);
-      expect(int.parse(count1.rows[0][0].toString()), 2);
+      expect(count1.rows[0][0], 2);
 
       await stmt1.execute(['c', 30]);
 
       final count2 = await stmt2.execute([15]);
-      expect(int.parse(count2.rows[0][0].toString()), 2);
+      expect(count2.rows[0][0], 2);
 
       await stmt1.release();
       await stmt2.release();
@@ -1229,12 +1226,12 @@ void main() {
       expect(result.rows[0][0], 'null_value');
       expect(result.rows[0][1], isNull);
       expect(result.rows[1][0], isNull);
-      expect(result.rows[1][1].toString(), '100');
+      expect(result.rows[1][1], 100);
     });
 
     test('throws when preparing invalid SQL', () async {
       expect(
-            () async => await mysql.prepare('SELECT * FRM invalid'),
+        () async => await mysql.prepare('SELECT * FRM invalid'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1288,14 +1285,14 @@ void main() {
       final txResult = await tx.queryRaw(
         'SELECT balance FROM test_accounts WHERE name = "Alice"',
       );
-      expect(double.parse(txResult.rows[0][0].toString()), 1000.00);
+      expect(txResult.rows[0][0], 1000.00);
 
       await tx.commit();
 
       final poolResult = await mysql.queryRaw(
         'SELECT balance FROM test_accounts WHERE name = "Alice"',
       );
-      expect(double.parse(poolResult.rows[0][0].toString()), 1000.00);
+      expect(poolResult.rows[0][0], 1000.00);
     });
 
     test('transaction rollback discards changes', () async {
@@ -1311,7 +1308,7 @@ void main() {
       final result = await mysql.queryRaw(
         'SELECT COUNT(*) FROM test_accounts WHERE name = "Bob"',
       );
-      expect(int.parse(result.rows[0][0].toString()), 0);
+      expect(result.rows[0][0], 0);
     });
 
     test('transaction isolation - uncommitted changes not visible', () async {
@@ -1325,14 +1322,14 @@ void main() {
       final poolResult = await mysql.queryRaw(
         'SELECT COUNT(*) FROM test_accounts WHERE name = "Charlie"',
       );
-      expect(int.parse(poolResult.rows[0][0].toString()), 0);
+      expect(poolResult.rows[0][0], 0);
 
       await tx.commit();
 
       final poolResultAfter = await mysql.queryRaw(
         'SELECT COUNT(*) FROM test_accounts WHERE name = "Charlie"',
       );
-      expect(int.parse(poolResultAfter.rows[0][0].toString()), 1);
+      expect(poolResultAfter.rows[0][0], 1);
     });
 
     test('multiple transactions can execute concurrently', () async {
@@ -1365,7 +1362,7 @@ void main() {
       await tx.queryRaw('SET @tx_var = 12345');
 
       final txResult = await tx.query('SELECT @tx_var');
-      expect(int.parse(txResult.rows[0][0].toString()), 12345);
+      expect(txResult.rows[0][0], 12345);
 
       final poolResult = await mysql.query('SELECT @tx_var');
       expect(poolResult.rows[0][0], isNull);
@@ -1400,8 +1397,8 @@ void main() {
         'SELECT name, balance FROM test_accounts ORDER BY name',
       );
 
-      expect(double.parse(result.rows[0][1].toString()), 750.00);
-      expect(double.parse(result.rows[1][1].toString()), 750.00);
+      expect(result.rows[0][1], 750.00);
+      expect(result.rows[1][1], 750.00);
     });
 
     test('transaction rollback after error', () async {
@@ -1426,7 +1423,7 @@ void main() {
       final result = await mysql.queryRaw(
         'SELECT balance FROM test_accounts WHERE name = "Original"',
       );
-      expect(double.parse(result.rows[0][0].toString()), 1000.00);
+      expect(result.rows[0][0], 1000.00);
     });
 
     test('transaction can use batch insert', () async {
@@ -1443,14 +1440,14 @@ void main() {
       );
 
       final txResult = await tx.query('SELECT COUNT(*) FROM test_accounts');
-      expect(int.parse(txResult.rows[0][0].toString()), 3);
+      expect(txResult.rows[0][0], 3);
 
       await tx.commit();
 
       final poolResult = await mysql.queryRaw(
         'SELECT COUNT(*) FROM test_accounts',
       );
-      expect(int.parse(poolResult.rows[0][0].toString()), 3);
+      expect(poolResult.rows[0][0], 3);
     });
 
     test('throws error after transaction is committed', () async {
@@ -1458,7 +1455,7 @@ void main() {
       await tx.commit();
 
       expect(
-            () async => await tx.query('SELECT 1'),
+        () async => await tx.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1468,7 +1465,7 @@ void main() {
       await tx.rollback();
 
       expect(
-            () async => await tx.query('SELECT 1'),
+        () async => await tx.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1528,7 +1525,7 @@ void main() {
       await Future.wait(futures);
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_concurrent');
-      expect(int.parse(result.rows[0][0].toString()), 10);
+      expect(result.rows[0][0], 10);
     });
 
     test('concurrent selects', () async {
@@ -1549,7 +1546,7 @@ void main() {
       final results = await Future.wait(futures);
 
       for (final result in results) {
-        expect(int.parse(result.rows[0][0].toString()), 600);
+        expect(result.rows[0][0], 600);
       }
     });
 
@@ -1571,7 +1568,7 @@ void main() {
       final result = await mysql.queryRaw(
         'SELECT SUM(value) FROM test_concurrent',
       );
-      expect(int.parse(result.rows[0][0].toString()), 450);
+      expect(result.rows[0][0], 450);
     });
 
     test('mixed concurrent operations', () async {
@@ -1593,7 +1590,7 @@ void main() {
       await Future.wait(futures);
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_concurrent');
-      expect(int.parse(result.rows[0][0].toString()), 5);
+      expect(result.rows[0][0], 5);
     });
 
     test('concurrent prepared statements', () async {
@@ -1609,7 +1606,7 @@ void main() {
       await stmt.release();
 
       final result = await mysql.query('SELECT COUNT(*) FROM test_concurrent');
-      expect(int.parse(result.rows[0][0].toString()), 10);
+      expect(result.rows[0][0], 10);
     });
   });
 
@@ -1680,7 +1677,7 @@ void main() {
 
       final result = await mysql.query('SELECT val FROM test_small');
       expect(result.rows, isNotEmpty);
-      expect(int.parse(result.rows[0][0].toString()), 0);
+      expect(result.rows[0][0], 0);
       await mysql.query('DROP TABLE test_small');
     });
 
@@ -1698,7 +1695,7 @@ void main() {
       ]);
 
       final result = await mysql.query('SELECT value FROM test_negative');
-      expect(int.parse(result.rows[0][0].toString()), -999);
+      expect(result.rows[0][0], -999);
 
       await mysql.query('DROP TABLE test_negative');
     });
@@ -1798,7 +1795,7 @@ void main() {
       await pool.close();
 
       expect(
-            () async => await pool.query('SELECT 1'),
+        () async => await pool.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1830,7 +1827,7 @@ void main() {
         ),
       );
       expect(
-            () async => await badPool.connect(),
+        () async => await badPool.connect(),
         throwsA(isA<MySQLException>()),
       );
     });
@@ -1909,7 +1906,7 @@ void main() {
       await conn.release();
 
       expect(
-            () async => await conn.query('SELECT 1'),
+        () async => await conn.query('SELECT 1'),
         throwsA(isA<MySQLException>()),
       );
     });
