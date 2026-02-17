@@ -26,7 +26,11 @@ List<CodeAsset>? _getAssets(
   String? libPath;
 
   if (os == OS.macOS) {
-    libPath = 'native/macos-universal/libturbo_mysql_core.dylib';
+    if (arch == Architecture.x64) {
+      libPath = 'native/macos-x64/libturbo_mysql_core.dylib';
+    } else if (arch == Architecture.arm64) {
+      libPath = 'native/macos-arm64/libturbo_mysql_core.dylib';
+    }
   } else if (os == OS.linux) {
     if (arch == Architecture.x64) {
       libPath = 'native/linux-x64/libturbo_mysql_core.so';

@@ -397,7 +397,15 @@ class MySqlPool {
       _callback = NativeCallable<QueryCallbackNative>.listener(
         _handleQueryCallback,
       );
+
       _isInitialized = true;
+
+      try {
+        await queryRaw('SELECT 1');
+      } catch (e) {
+        await close();
+        rethrow;
+      }
     } finally {
       malloc.free(urlNative);
     }

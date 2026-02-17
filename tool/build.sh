@@ -13,13 +13,11 @@ if [[ "$OS_TYPE" == "Darwin" ]]; then
   cargo build --release --target aarch64-apple-darwin
   cargo build --release --target x86_64-apple-darwin
 
-  UNIVERSAL_DIR="../turbo_mysql/native/macos-universal"
-  mkdir -p "$UNIVERSAL_DIR"
+  mkdir -p "../turbo_mysql/native/macos-arm64"
+  mkdir -p "../turbo_mysql/native/macos-x64"
 
-  lipo -create \
-    target/aarch64-apple-darwin/release/lib${CRATE_NAME}.dylib \
-    target/x86_64-apple-darwin/release/lib${CRATE_NAME}.dylib \
-    -output "$UNIVERSAL_DIR/lib${CRATE_NAME}.dylib"
+  cp target/aarch64-apple-darwin/release/lib${CRATE_NAME}.dylib ../turbo_mysql/native/macos-arm64/lib${CRATE_NAME}.dylib
+  cp target/x86_64-apple-darwin/release/lib${CRATE_NAME}.dylib ../turbo_mysql/native/macos-x64/lib${CRATE_NAME}.dylib
   exit 0
 fi
 
