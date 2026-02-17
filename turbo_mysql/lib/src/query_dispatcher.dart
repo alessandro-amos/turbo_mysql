@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ffi';
+import 'dart:typed_data';
 import 'bindings.dart';
 import 'binary_io.dart';
 import 'data_converter.dart';
@@ -29,15 +30,15 @@ int _nextQueryId = 1;
 
 /// Global callback function invoked by Rust when a query completes.
 void handleQueryCallback(int id, Pointer<Uint8> dataPtr, int len) {
-  final completer = _pendingQueries.remove(id);
+  final Uint8List localBytes = Uint8List.fromList(dataPtr.asTypedList(len));
 
-  if (completer == null) {
-    mysql_buffer_free(dataPtr, len);
-    return;
-  }
+  mysql_buffer_free(dataPtr, len);
+
+  final completer = _pendingQueries.remove(id);
+  if (completer == null) return;
 
   try {
-    final reader = BinaryReader(dataPtr, len);
+    final reader = BinaryReader.fromBytes(localBytes);
     final status = reader.readUint8();
 
     if (status == 0) {
@@ -68,21 +69,17 @@ void handleQueryCallback(int id, Pointer<Uint8> dataPtr, int len) {
         }, growable: false);
       }, growable: false);
 
-      final result = QueryResult(
+      completer.complete(QueryResult(
         columns: columns,
         rows: rows,
         affectedRows: affectedRows,
         lastInsertId: lastInsertId,
-      );
-
-      completer.complete(result);
+      ));
     }
   } catch (e, st) {
     completer.completeError(
       MySQLException('Failed to parse binary result: $e $st'),
     );
-  } finally {
-    mysql_buffer_free(dataPtr, len);
   }
 }
 

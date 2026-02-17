@@ -11,10 +11,19 @@ class BinaryReader {
   int _offset = 0;
   final Uint8List _rawBytes;
 
-  /// Creates a [BinaryReader] from a native pointer and a byte length.
+  /// Creates a [BinaryReader] copying data from a native pointer.
+  ///
+  /// The data is immediately copied into Dart-managed memory, so the
+  /// native buffer can be freed at any time after construction.
   BinaryReader(Pointer<Uint8> ptr, int len)
-    : _rawBytes = ptr.asTypedList(len),
-      _view = ByteData.sublistView(ptr.asTypedList(len));
+      : _rawBytes = Uint8List.fromList(ptr.asTypedList(len)),
+        _view = ByteData.sublistView(
+          Uint8List.fromList(ptr.asTypedList(len)),
+        );
+
+  BinaryReader.fromBytes(Uint8List bytes)
+      : _rawBytes = bytes,
+        _view = ByteData.sublistView(bytes);
 
   /// Reads an 8-bit unsigned integer and advances the offset by 1.
   int readUint8() {

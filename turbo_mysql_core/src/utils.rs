@@ -247,7 +247,8 @@ pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64)
                 }
                 MySqlValue::Time(neg, d, h, m, s, mic) => {
                     let sign = if *neg { "-" } else { "" };
-                    let ts = format!("{}{:02}:{:02}:{:02}:{:02}.{:06}", sign, d, h, m, s, mic);
+                    let total_hours = (*d as u32) * 24 + (*h as u32);
+                    let ts = format!("{}{:02}:{:02}:{:02}.{:06}", sign, total_hours, m, s, mic);
                     buf.write_u8(1);
                     buf.write_blob(ts.as_bytes());
                 }
