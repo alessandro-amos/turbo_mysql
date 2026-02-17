@@ -145,7 +145,6 @@ pub fn encode_error(msg: &str) -> Vec<u8> {
     buf
 }
 
-/// Parses a single parameter value from the binary stream sent by Dart.
 pub fn parse_value(reader: &mut BinaryReader) -> MySqlValue {
     match reader.read_u8() {
         Some(PARAM_NULL) => MySqlValue::NULL,
@@ -179,7 +178,6 @@ pub fn parse_params_list(ptr: *const c_uchar, len: c_int) -> Vec<MySqlValue> {
     mysql_params
 }
 
-/// Serializes query results into a binary payload for consumption by Dart.
 pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64) -> Vec<u8> {
     let mut buf = Vec::with_capacity(20 + rows.len() * 64);
     buf.write_u8(STATUS_OK);
@@ -205,7 +203,9 @@ pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64)
             .collect()
     };
 
-    buf.write_u32(cols_meta.len() as u32);
+    let cols_len = cols_meta.len();
+    buf.write_u32(cols_len as u32);
+
     for (name, col_type, charset) in &cols_meta {
         buf.write_blob(name);
         buf.write_u16(*col_type);
@@ -213,9 +213,11 @@ pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64)
     }
 
     buf.write_u32(rows.len() as u32);
+
     for row in rows {
-        for i in 0..row.len() {
-            match &row[i] {
+        for i in 0..cols_len {
+            let val = if i < row.len() { &row[i] } else { &MySqlValue::NULL };
+            match val {
                 MySqlValue::NULL => buf.write_u8(0),
                 MySqlValue::Int(v) => {
                     buf.write_u8(1);
@@ -247,7 +249,7 @@ pub fn serialize_result(rows: Vec<Row>, affected_rows: u64, last_insert_id: u64)
                 }
                 MySqlValue::Time(neg, d, h, m, s, mic) => {
                     let sign = if *neg { "-" } else { "" };
-                    let total_hours = (*d as u32) * 24 + (*h as u32);
+                    let total_hours = (*d) * 24 + (*h as u32);
                     let ts = format!("{}{:02}:{:02}:{:02}.{:06}", sign, total_hours, m, s, mic);
                     buf.write_u8(1);
                     buf.write_blob(ts.as_bytes());
